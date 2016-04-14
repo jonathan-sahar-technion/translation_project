@@ -6,8 +6,11 @@ import sys
 
 
 # exon-starts are 0-based, exon-ends are 1-based
-my_input_file = sys.argv[1]
-my_output_file = sys.argv[2]
+# my_input_file = sys.argv[1]
+# my_output_file = sys.argv[2]
+
+my_input_file = "/home/jonathan/Documents/data/mm9_prev_version/mm9_ensGene_eric.gpe"
+my_output_file = "/home/jonathan/Documents/data/extracted_utrs.bed"
 N = 3
 
 NAME_FIELD = 1
@@ -69,14 +72,16 @@ print "Proccessing ", my_input_file, "..."
 
 count = 0
 with open(my_input_file, 'r') as tsv:
-    for line in csv.reader(tsv,  delimiter="\t"):
+    reader = csv.reader(tsv,  delimiter="\t")
+    reader.next()
+    for line in reader:
         strand = line[STRAND_FIELD]
 
         name = line[NAME_FIELD]
         name2 = line[NAME2_FIELD]
         chrom = line[CHROM_FIELD]
-        exon_starts =  line[EXON_STARTS_FIELD].split(",")[:-1] # -1 for removing the empty member at the end of the list
-        exon_ends =  line[EXON_ENDS_FIELD].split(",")[:-1] # -1 for removing the empty member at the end of the list
+        exon_starts =  [int(x) for x in line[EXON_STARTS_FIELD].split(",")[:-1]] # -1 for removing the empty member at the end of the list
+        exon_ends =  [int(x) for x in line[EXON_ENDS_FIELD].split(",")[:-1]] # -1 for removing the empty member at the end of the list
 
         # print exon_ends
         # print "cds_start:", cds_start
@@ -85,10 +90,17 @@ with open(my_input_file, 'r') as tsv:
 
         if strand == '+':
             cds_start = int(line[CDS_START_FIELD])
-            exons_to_keep = [index for index, value in enumerate(exon_ends) if int(value) < cds_start]
+            exons_to_keep = [index for index, value in enumerate(exon_starts) if int(value) < cds_start]
+
+            print "cdsStart: ", cds_start
+            print "exons_to_keep: ", exons_to_keep
+            starts_to_keep = [ex for i, ex in enumerate(exon_starts) if i in exons_to_keep]
+            print "diffs to edge, CDS_start - start : ", [cds_start - v for  v in exon_starts]
+            print "diffs to edge, chosen exons, CDS_start - start : ", [cds_start - v for  v in starts_to_keep]
+
         else:
             cds_end = int(line[CDS_END_FIELD])
-            exons_to_keep = [index for index, value in enumerate(exon_starts) if int(value) > cds_end]
+            exons_to_keep = [index for index, value in enumerate(exon_ends) if int(value) > cds_end]
 
         new_exon_starts = [exon_starts[i] for i in exons_to_keep]
         new_exon_ends = [exon_ends[i] for i in exons_to_keep]
