@@ -13,18 +13,28 @@ my_input_file = "/home/jonathan/Documents/data/mm9_prev_version/mm9_ensGene_eric
 my_output_file = "/home/jonathan/Documents/data/extracted_utrs.bed"
 N = 3
 
+START = 0
+END = 1000000000
+
+
 NAME_FIELD = 1
-NAME2_FIELD = 12
 CHROM_FIELD = 2
 STRAND_FIELD = 3
+TX_START_FIELD = 4
+TX_END_FIELD = 5
 CDS_START_FIELD = 6
 CDS_END_FIELD = 7
 EXON_COUNT_FIELD = 8
 EXON_STARTS_FIELD = 9
 EXON_ENDS_FIELD = 10
-
+NAME2_FIELD = 12
+RGB = 111 #some random value
+SCORE = 500
 all_lines = list()
+
+
 print "Proccessing ", my_input_file, "..."
+
 # df = pd.read_csv(my_input_file, sep="\t")
 # for index, row in df.iterrows():
 #     # print "\n\n"
@@ -80,6 +90,11 @@ with open(my_input_file, 'r') as tsv:
         name = line[NAME_FIELD]
         name2 = line[NAME2_FIELD]
         chrom = line[CHROM_FIELD]
+        tx_start = line[TX_START_FIELD]
+        tx_end = line[TX_END_FIELD]
+
+
+
         exon_starts =  [int(x) for x in line[EXON_STARTS_FIELD].split(",")[:-1]] # -1 for removing the empty member at the end of the list
         exon_ends =  [int(x) for x in line[EXON_ENDS_FIELD].split(",")[:-1]] # -1 for removing the empty member at the end of the list
 
@@ -91,22 +106,23 @@ with open(my_input_file, 'r') as tsv:
         if strand == '+':
             cds_start = int(line[CDS_START_FIELD])
             exons_to_keep = [index for index, value in enumerate(exon_starts) if int(value) < cds_start]
-
-            print "cdsStart: ", cds_start
-            print "exons_to_keep: ", exons_to_keep
-            starts_to_keep = [ex for i, ex in enumerate(exon_starts) if i in exons_to_keep]
-            print "diffs to edge, CDS_start - start : ", [cds_start - v for  v in exon_starts]
-            print "diffs to edge, chosen exons, CDS_start - start : ", [cds_start - v for  v in starts_to_keep]
-
+            starts_to_keep = [str(ex) for i, ex in enumerate(exon_starts) if i in exons_to_keep]
         else:
             cds_end = int(line[CDS_END_FIELD])
             exons_to_keep = [index for index, value in enumerate(exon_ends) if int(value) > cds_end]
+            ends_to_keep = [str(ex) for i, ex in enumerate(exon_ends) if i in exons_to_keep]
 
-        new_exon_starts = [exon_starts[i] for i in exons_to_keep]
-        new_exon_ends = [exon_ends[i] for i in exons_to_keep]
+        all_block_sizes = [end - start for start, end in zip(exon_starts, exon_ends)]
 
-        new_lines = [[chrom, start, end, name + "_" + name2, strand] for start,end in zip(exon_starts, exon_ends)]
-        all_lines += new_lines
+        block_sizes =  ",".join([str(b) for i,b in enumerate(all_block_sizes) if i in exons_to_keep])
+        block_starts = ",".join([str(ex) for i, ex in enumerate(exon_starts) if i in exons_to_keep])
+        num_blocks = len(exons_to_keep)
+        # new_lines = [[chrom, start, end, name + "_" + name2, SCORE, strand, start, end, RGB, len(exons_to_keep), block_sizes, block_starts]\
+        #              for start,end in zip(exon_starts, exon_ends)]
+
+        if num_blocks > 0:
+            new_line = [[chrom, tx_start, tx_end, name + "_" + name2, SCORE, strand, line[CDS_START_FIELD], line[CDS_END_FIELD], RGB, num_blocks, block_sizes, block_starts]]
+            all_lines += new_line
 
         # print "adding lines:"
         # for l in  new_lines:
@@ -115,8 +131,11 @@ with open(my_input_file, 'r') as tsv:
         count += 1
 
 print "writing to ", my_output_file, "..."
-output_header = ["chrom", "start", "end", "name", "strand"]
+output_header = ["chrom", "start", "end", "name", "score", "strand","thickStart", "thickEnd", "itemRgb", "blockCount", "blockSizes", "blockStarts " ]
 with open(my_output_file, 'w') as tsv:
     writer = csv.writer(tsv,  delimiter="\t")
     writer.writerow(output_header)
     writer.writerows(all_lines)
+
+
+
