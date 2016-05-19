@@ -10,8 +10,8 @@ import sys
 # my_output_file = sys.argv[2]
 
 my_input_file = "/home/jonathan/Documents/data/mm9_prev_version/mm9_ensGene_eric.gpe"
-my_output_file_mulitple_exons = "/home/jonathan/Documents/data/extracted_utrs_multi.bed"
-my_output_file_single_exons = "/home/jonathan/Documents/data/extracted_utrs_single.bed"
+my_output_file_mulitple_exons = "/home/jonathan/Documents/data/bed_files/extract_utrs_output_multi.bed"
+my_output_file_single_exons = "/home/jonathan/Documents/data/bed_files/extract_utrs_output_single.bed"
 
 START = 0
 END = 1000000000
@@ -40,6 +40,9 @@ with open(my_input_file, 'r') as tsv:
     reader = csv.reader(tsv,  delimiter="\t")
     reader.next()
     for line in reader:
+        if line[CDS_START_FIELD] == line[CDS_END_FIELD]:
+            count += 1
+            continue #skeep non-coding RNAs
 
         # extract info from line
         strand = line[STRAND_FIELD]
