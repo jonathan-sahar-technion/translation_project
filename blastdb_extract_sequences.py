@@ -12,7 +12,7 @@ output_file = "../data/extracted_sequences/extracted_utrs_blastdb.fa"
 blastb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
 entries_file = "../data/entries.txt"
 
-MAX_LINES = 10 
+MAX_LINES = 10
 
 START = 0
 END = 1000000000
@@ -98,11 +98,16 @@ def proccess_line(line):
                          for i, exon_end in enumerate(exon_ends)
                          if int(exon_end) > cds_end]
         entries = ["{chr} {start}-{end} minus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
-	entries.reverse() # since this will give the reverse compliment, in order to get a correct concatenation we want to reverse the order of the exons.
+        entries.reverse() # since this will give the reverse compliment, in order to get a correct concatenation we want to reverse the order of the exons.
+
+    first_kept_start = exons_to_keep[0][0]
+    first_kept_end = exons_to_keep[0][1]
+    first_kept_size = first_kept_end - first_kept_start
+
     if len(entries) > 1:
-	res = run_blastdbcmd(entries)
-	utr_sequence = res.replace('\n', '')
-	return  [name + "_" + name2, utr_sequence]
+        res = run_blastdbcmd(entries)
+        utr_sequence = res.replace('\n', '')
+        return  [name + "_" + name2, first_kept_start, first_kept_size, utr_sequence]
     return []
 
 
@@ -115,21 +120,18 @@ if __name__ == '__main__':
         reader = csv.reader(tsv,  delimiter="\t")
         reader.next()
         for line in reader:
-	    if count > MAX_LINES:
-	        break 
+            if count > MAX_LINES:
+                break
             count += 1
 
             if line[CDS_START_FIELD] == line[CDS_END_FIELD]:
                 continue #skeep non-coding RNAs
 
-	    proccessed_line = proccess_line(line)
-	    if len(proccessed_line) > 0:
+            proccessed_line = proccess_line(line)
+            if len(proccessed_line) > 0:
                 output_lines.append(proccessed_line)
-   
 
-
-
-    output_header = ["name", "5'_UTR"]
+        output_header = ["name", "1st_exon_start", "1st_exon_size" "5'_UTR"]
     with open(output_file, 'w') as tsv:
             writer = csv.writer(tsv,  delimiter="\t")
             print "writing to", output_file, "..."
