@@ -7,10 +7,10 @@ from subprocess import check_output
 # my_input_file = sys.argv[1]
 # my_output_file = sys.argv[2]
 
-my_input_file = "/home/jonathan/Documents/data/mm9_prev_version/mm9_ensGene_eric.gpe"
-output_file = "/home/jonathan/Documents/data/bed_files/extract_utrs_output_multi.bed"
+my_input_file = "../data/annotations/mm9_prev_version/mm9_ensGene_eric.gpe"
+output_file = "../data/bed_files/extract_utrs_output_multi.bed"
 blastb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
-entries_file = "/home/jonathan/Documents/data/entries.txt"
+entries_file = "../data/entries.txt"
 
 START = 0
 END = 1000000000
