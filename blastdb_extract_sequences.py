@@ -8,9 +8,11 @@ from subprocess import check_output
 # my_output_file = sys.argv[2]
 
 my_input_file = "../data/annotations/mm9_prev_version/mm9_ensGene_eric.gpe"
-output_file = "../data/bed_files/extract_utrs_output_multi.bed"
+output_file = "../data/extracted_sequences/extracted_utrs_blastdb.fa"
 blastb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
 entries_file = "../data/entries.txt"
+
+MAX_LINES = 10 
 
 START = 0
 END = 1000000000
@@ -28,15 +30,11 @@ EXON_ENDS_FIELD = 10
 NAME2_FIELD = 12
 RGB = 111 #some random value
 SCORE = 500
-all_lines = list()
-all_lines_single_exon = list()
-
-
 
 def run_blastdbcmd(entries):
     # write entries to temporary file
     with open(entries_file, 'w') as file:
-        print "writing to ", entries_file, "..."
+        # print "writing to", entries_file, "..."
         file.write("\n".join(entries))
 
     blastdb_str = "blastdbcmd -db {db} -entry_batch {entries}".format(db = blastb_path, entries = entries_file)
@@ -100,34 +98,41 @@ def proccess_line(line):
                          for i, exon_end in enumerate(exon_ends)
                          if int(exon_end) > cds_end]
         entries = ["{chr} {start}-{end} minus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
-    res = run_blastdbcmd(entries)
-    utr_sequence = res.replace('\n', '')
-    return  utr_sequence
-
+	entries.reverse() # since this will give the reverse compliment, in order to get a correct concatenation we want to reverse the order of the exons.
+    if len(entries) > 1:
+	res = run_blastdbcmd(entries)
+	utr_sequence = res.replace('\n', '')
+	return  [name + "_" + name2, utr_sequence]
+    return []
 
 
 if __name__ == '__main__':
 
-    print "Proccessing ", my_input_file, "..."
+    print "Proccessing", my_input_file, "..."
     output_lines = []
     count = 0
     with open(my_input_file, 'r') as tsv:
         reader = csv.reader(tsv,  delimiter="\t")
         reader.next()
         for line in reader:
+	    if count > MAX_LINES:
+	        break 
+            count += 1
+
             if line[CDS_START_FIELD] == line[CDS_END_FIELD]:
-                count += 1
                 continue #skeep non-coding RNAs
 
-            output_lines += proccess_line(line)
-            count += 1
+	    proccessed_line = proccess_line(line)
+	    if len(proccessed_line) > 0:
+                output_lines.append(proccessed_line)
+   
 
 
 
     output_header = ["name", "5'_UTR"]
     with open(output_file, 'w') as tsv:
             writer = csv.writer(tsv,  delimiter="\t")
-            print "writing to ", output_file, "..."
+            print "writing to", output_file, "..."
             writer.writerow(output_header)
             writer.writerows(output_lines)
 
