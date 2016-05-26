@@ -110,7 +110,6 @@ def proccess_line(line):
         return  [name + "_" + name2, chrom, first_kept_start, first_kept_size, strand, utr_sequence]
     return []
 
-
 if __name__ == '__main__':
 
     print "Proccessing", my_input_file, "..."
