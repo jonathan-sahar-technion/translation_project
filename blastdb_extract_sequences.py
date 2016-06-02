@@ -7,12 +7,16 @@ from subprocess import check_output
 # my_input_file = sys.argv[1]
 # my_output_file = sys.argv[2]
 
-my_input_file = "../data/annotations/mm9_prev_version/mm9_ensGene_eric.gpe"
-output_file = "../data/extracted_sequences/extracted_utrs_blastdb.fa"
-blastb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
-entries_file = "../data/entries.txt"
+data_folder = "/home/jonathan/Documents/data/"
+my_input_file = data_folder + "annotations/mm9_prev_version/mm9_ensGene_eric.gpe"
+LIMIT_INPUT_LINES = 100
 
-MAX_LINES = 100
+tsv_output_file = data_folder +  "extracted_sequences/extracted_utrs_blastdb.tsv"
+fasta_output_file = data_folder + "extracted_sequences/extracted_utrs_blastdb.fa"
+
+blastdb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
+entries_file = data_folder + "entries.txt"
+
 
 START = 0
 END = 1000000000
@@ -37,7 +41,7 @@ def run_blastdbcmd(entries):
         # print "writing to", entries_file, "..."
         file.write("\n".join(entries))
 
-    blastdb_str = "blastdbcmd -db {db} -entry_batch {entries}".format(db = blastb_path, entries = entries_file)
+    blastdb_str = "blastdbcmd -db {db} -entry_batch {entries}".format(db = blastdb_path, entries = entries_file)
     grep_str = 'grep -v ">"'
     command_str = blastdb_str + "|" + grep_str
 
@@ -119,7 +123,7 @@ if __name__ == '__main__':
         reader = csv.reader(tsv,  delimiter="\t")
         reader.next()
         for line in reader:
-            if count > MAX_LINES:
+            if count > LIMIT_INPUT_LINES:
                 break
             count += 1
 
@@ -131,9 +135,14 @@ if __name__ == '__main__':
                 output_lines.append(proccessed_line)
 
         output_header = ["name", "chr", "first_exon_start", "first_exon_size", "strand", "5'_UTR"]
-    with open(output_file, 'w') as tsv:
+    with open(tsv_output_file, 'w') as tsv:
             writer = csv.writer(tsv,  delimiter="\t")
             print "writing to", output_file, "..."
             writer.writerow(output_header)
             writer.writerows(output_lines)
+
+    with open(fasta_output_file, 'w') as fasta_file:
+        for line in output_lines:
+            fasta_file.write(">" + output_lines[0])
+            fasta_file.write(output_lines[5])
 
