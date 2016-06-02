@@ -7,7 +7,8 @@ from subprocess import check_output
 # my_input_file = sys.argv[1]
 # my_output_file = sys.argv[2]
 
-data_folder = "/home/jonathan/Documents/data/"
+#data_folder = "/home/jonathan/Documents/data/"
+data_folder = "/srv01/technion/jonathans/data/"
 my_input_file = data_folder + "annotations/mm9_prev_version/mm9_ensGene_eric.gpe"
 LIMIT_INPUT_LINES = 100
 
@@ -137,12 +138,13 @@ if __name__ == '__main__':
         output_header = ["name", "chr", "first_exon_start", "first_exon_size", "strand", "5'_UTR"]
     with open(tsv_output_file, 'w') as tsv:
             writer = csv.writer(tsv,  delimiter="\t")
-            print "writing to", output_file, "..."
+       
             writer.writerow(output_header)
             writer.writerows(output_lines)
 
     with open(fasta_output_file, 'w') as fasta_file:
+        
         for line in output_lines:
-            fasta_file.write(">" + output_lines[0])
-            fasta_file.write(output_lines[5])
+            fasta_file.write(">" + line[0]+"\n")
+            fasta_file.write(line[5]+"\n\n")
 
