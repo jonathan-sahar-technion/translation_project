@@ -4,6 +4,7 @@ from itertools import combinations
 import re
 import numpy as np
 import csv
+import decimal
 
 # Constants
 POSITION = 0
@@ -75,8 +76,10 @@ def get_RBP_motifs_from_gene(gene_name, input_lines):
                          all_RBPs[protein] = [gene_name]
 
                     # calculate stats for previous protein
-                    dMotif_counts[protein][average_pvalue] = np.average(np.array([float(x)
-                                                                        for x in dMotif_counts[protein][p_values]]))
+                    decimal.getcontext().prec = 2
+                    avg = np.average(np.array([float(x) for x in dMotif_counts[protein][p_values]]))
+                    avg = round(decimal.Decimal(avg),4 )
+                    dMotif_counts[protein][average_pvalue] = avg
 
                 # For all including the first protein in the file
                 protein = line[1]
@@ -166,4 +169,7 @@ def get_RBP_motifs_all_genes():
 
         print  all_proteins
 
-get_RBP_motifs_all_genes()
+
+if __name__ == '__main__':
+
+    get_RBP_motifs_all_genes()
