@@ -120,14 +120,13 @@ def get_RBP_motifs_from_gene(gene_name, input_lines):
 
     return header, lines
 
-def get_RBP_motifs_all_genes():
-    f_name = workspace + "/rbp_motifs/prediction_example_multiple_genes.txt"
+def get_RBP_motifs_all_genes(rbp_output_file = workspace + "/rbp_motifs/prediction_example_multiple_genes.txt"):
     collect_lines = False
     lines = []
     extrated_features = []
     gene_name = ""
     header = ""
-    with open(f_name) as file:
+    with open(rbp_output_file) as file:
         for line in file:
             line = line.split()
             if len(line) < 1 :

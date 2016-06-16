@@ -2,26 +2,30 @@
 
 import csv
 from subprocess import check_output
+from feature_exraction import get_RBP_motifs_all_genes
 
 # exon-starts are 0-based, exon-ends are 1-based
 # my_input_file = sys.argv[1]
 # my_output_file = sys.argv[2]
 
-#data_folder = "/home/jonathan/Documents/data/"
-data_folder = "/srv01/technion/jonathans/data/"
+
+
+# configure paths
+data_folder = "/home/jonathan/Documents/data/"
+#data_folder = "/srv01/technion/jonathans/data/"
 my_input_file = data_folder + "annotations/mm9_prev_version/mm9_ensGene_eric.gpe"
-LIMIT_INPUT_LINES = 100
+LIMIT_INPUT_LINES = 10
 
 tsv_output_file = data_folder +  "extracted_sequences/extracted_utrs_blastdb.tsv"
 fasta_output_file = data_folder + "extracted_sequences/extracted_utrs_blastdb.fa"
 
 blastdb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
-entries_file = data_folder + "entries.txt"
+blastdb_entries_file = data_folder + "blastdb_entries.txt"
+rbpmap_entries_file = data_folder + "RBPmap_entries.txt"
 
 
-START = 0
-END = 1000000000
 
+# line structure
 NAME_FIELD = 1
 CHROM_FIELD = 2
 STRAND_FIELD = 3
@@ -35,14 +39,20 @@ EXON_ENDS_FIELD = 10
 NAME2_FIELD = 12
 RGB = 111 #some random value
 SCORE = 500
+START = 0
+END = 1000000000
+
+# run blastdbcmd?
+do_extract_fasta = False
+
 
 def run_blastdbcmd(entries):
     # write entries to temporary file
-    with open(entries_file, 'w') as file:
+    with open(blastdb_entries_file, 'w') as file:
         # print "writing to", entries_file, "..."
         file.write("\n".join(entries))
 
-    blastdb_str = "blastdbcmd -db {db} -entry_batch {entries}".format(db = blastdb_path, entries = entries_file)
+    blastdb_str = "blastdbcmd -db {db} -entry_batch {entries}".format(db = blastdb_path, entries = blastdb_entries_file)
     grep_str = 'grep -v ">"'
     command_str = blastdb_str + "|" + grep_str
 
@@ -51,9 +61,26 @@ def run_blastdbcmd(entries):
     return command_result
 
 
+def run_RBPmap(entries):
+    # write entries to temporary file
+    with open(rbpmap_entries_file, 'w') as file:
+        # print "writing to", entries_file, "..."
+        file.write("\n".join(entries))
+
+    rbpmap_cmd = "rbpMap -input {input_file} -genome 'mouse' -db 'mm9'".format(input_file = rbpmap_entries_file)
+
+    # execute the command
+    command_result = check_output(rbpmap_cmd, shell=True)
+    return command_result
 
 
-def proccess_line(line):
+def proccess_line(line, mode): # 'mode' is one of "blastcmd", "rbpmap"
+
+    # init function wide parameters
+    blastcmd_entries = []
+    exons_to_keep = []
+    rbpmap_entries = []
+
      # extract info from line
     strand = line[STRAND_FIELD]
     name = line[NAME_FIELD]
@@ -86,7 +113,8 @@ def proccess_line(line):
         exons_to_keep = [(int(exon_start),int(exon_ends[i]))
                          for i, exon_start in enumerate(exon_starts)
                          if int(exon_start) < cds_start]
-        entries = ["{chr} {start}-{end} plus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
+        blastcmd_entries = ["{chr} {start}-{end} plus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
+        rbpmap_entries = ["{chr}:{start}-{end}:plus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
 
     elif strand == '-':
 
@@ -102,23 +130,32 @@ def proccess_line(line):
         exons_to_keep = [(int(exon_starts[i]),int(exon_end))
                          for i, exon_end in enumerate(exon_ends)
                          if int(exon_end) > cds_end]
-        entries = ["{chr} {start}-{end} minus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
-        entries.reverse() # since this will give the reverse compliment, in order to get a correct concatenation we want to reverse the order of the exons.
 
+        blastcmd_entries = ["{chr} {start}-{end} minus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
+        blastcmd_entries.reverse() # since this will give the reverse compliment, in order to get a correct concatenation we want to reverse the order of the exons.
 
-    if len(entries) > 1:
+        rbpmap_entries = ["{chr}:{start}-{end}:minus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
+
+    if mode == 'blastcmd' and len(blastcmd_entries) > 1:
         first_kept_start = exons_to_keep[0][0]
         first_kept_end = exons_to_keep[0][1]
         first_kept_size = first_kept_end - first_kept_start
         res = run_blastdbcmd(entries)
         utr_sequence = res.replace('\n', '')
         return  [name + "_" + name2, chrom, first_kept_start, first_kept_size, strand, utr_sequence]
+
+    elif mode == 'rbpmap':
+        # print rbpmap_entries
+        # print "\n"
+        return rbpmap_entries
+
     return []
 
 if __name__ == '__main__':
 
     print "Proccessing", my_input_file, "..."
     output_lines = []
+    rbpmap_entries = []
     count = 0
     with open(my_input_file, 'r') as tsv:
         reader = csv.reader(tsv,  delimiter="\t")
@@ -131,20 +168,34 @@ if __name__ == '__main__':
             if line[CDS_START_FIELD] == line[CDS_END_FIELD]:
                 continue #skeep non-coding RNAs
 
-            proccessed_line = proccess_line(line)
-            if len(proccessed_line) > 0:
-                output_lines.append(proccessed_line)
+#            proccessed_line = proccess_line(line, 'blastcmd')
+#            if len(proccessed_line) > 0:
+#                output_lines.append(proccessed_line)
 
-        output_header = ["name", "chr", "first_exon_start", "first_exon_size", "strand", "5'_UTR"]
-    with open(tsv_output_file, 'w') as tsv:
+            proccessed_line = proccess_line(line, 'rbpmap')
+            if len(proccessed_line) > 0:
+                rbpmap_entries +=proccessed_line
+
+    output_header = ["name", "chr", "first_exon_start", "first_exon_size", "strand", "5'_UTR"]
+
+    if do_extract_fasta:
+        with open(tsv_output_file, 'w') as tsv:
             writer = csv.writer(tsv,  delimiter="\t")
-       
             writer.writerow(output_header)
             writer.writerows(output_lines)
+        print("written tab delimeted file to {}".format(tsv_output_file))
 
-    with open(fasta_output_file, 'w') as fasta_file:
-        
-        for line in output_lines:
-            fasta_file.write(">" + line[0]+"\n")
-            fasta_file.write(line[5]+"\n\n")
+        with open(fasta_output_file, 'w') as fasta_file:
+            for line in output_lines:
+                fasta_file.write(">" + line[0]+"\n")
+                fasta_file.write(line[5]+"\n\n")
+            print("written tab fasta file to {}".format(fasta_output_file))
+
+    with open(rbpmap_entries_file, 'w') as rbpmap_file:
+        writer = csv.writer(rbpmap_file,  delimiter="\t")
+        writer.writerows([[line] for line in rbpmap_entries])
+        print("written rbpmap file to {}".format(rbpmap_entries_file))
+
+
+    get_RBP_motifs_all_genes(rbpmap_file)
 
