@@ -1,4 +1,4 @@
-from cogent.parse.consan import sequence
+# from cogent.parse.consan import sequence
 from collections import Counter
 from itertools import combinations
 import re
@@ -18,9 +18,10 @@ NUCLEOTIDES = "ACUG"
 all_RBPs = {}
 
 #Paths
-workspace = "/home/jonathan/Documents/data"
-rbp_motifs_per_gene_path = workspace + "/rbp_motifs/motifs_by_gene_name.tsv"
-genes_per_protein_path = workspace + "/rbp_motifs/genes_by_protein_name.tsv"
+# workspace = "/home/jonathan/Documents/data"
+workspace = "/srv01/technion/jonathans/data"
+rbp_motifs_per_gene_path = workspace + "/rbp_motif_analysis/motifs_by_gene_name.tsv"
+genes_per_protein_path = workspace + "/rbp_motif_analysis/genes_by_protein_name.tsv"
 
  # Utility functions
 def is_number(string):
@@ -154,13 +155,13 @@ def get_RBP_motifs_all_genes(rbp_output_file = workspace + "/rbp_motifs/predicti
                 collect_lines = True
                 continue
 
-    with open(rbp_motifs_per_gene_path, 'w') as file:
+    with open(rbp_motifs_per_gene_path, 'w+') as file:
         writer = csv.writer(file,  delimiter="\t")
         writer.writerow(header)
         writer.writerows(extrated_features)
 
     header = ['protein_name', 'genes']
-    with open(genes_per_protein_path, 'w') as file:
+    with open(genes_per_protein_path, 'w+') as file:
         writer = csv.writer(file,  delimiter="\t")
         writer.writerow(header)
         all_proteins = [[protein] + genes for protein, genes in sort_by_first_in_tuple(all_RBPs.items())]
