@@ -9,9 +9,15 @@ import sys
 # my_input_file = sys.argv[1]
 # my_output_file = sys.argv[2]
 
-my_input_file = "/home/jonathan/Documents/data/mm9_prev_version/mm9_ensGene_eric.gpe"
-my_output_file_mulitple_exons = "/home/jonathan/Documents/data/bed_files/extract_utrs_output_multi.bed"
-my_output_file_single_exons = "/home/jonathan/Documents/data/bed_files/extract_utrs_output_single.bed"
+bServer = False
+
+data_dir = "/home/jonathan/Documents/data"
+if bServer:
+    data_dir = "/home/jonathan/data"
+
+input_file = data_dir + "/input/mm9_ensGene_eric.gpe"
+output_file_mulitple_exons = data_dir + "/output/extract_utrs_output_multi.bed"
+output_file_single_exons = data_dir + "/output/extract_utrs_output_single.bed"
 
 START = 0
 END = 1000000000
@@ -33,10 +39,10 @@ SCORE = 500
 all_lines = list()
 all_lines_single_exon = list()
 
-print "Proccessing ", my_input_file, "..."
+print "Proccessing ", input_file, "..."
 
 count = 0
-with open(my_input_file, 'r') as tsv:
+with open(input_file, 'r') as tsv:
     reader = csv.reader(tsv,  delimiter="\t")
     reader.next()
     for line in reader:
@@ -99,18 +105,18 @@ with open(my_input_file, 'r') as tsv:
         count += 1
 
 output_header_single_exon = ["chrom", "start", "end", "name", "score", "strand"]
-with open(my_output_file_single_exons, 'w') as tsv:
+with open(output_file_single_exons, 'w') as tsv:
     writer = csv.writer(tsv,  delimiter="\t")
-    print "writing to ", my_output_file_single_exons, "..."
+    print "writing to ", output_file_single_exons, "..."
     writer.writerow(output_header_single_exon)
     writer.writerows(all_lines_single_exon)
 
 
 
 output_header_multi = ["chrom", "start", "end", "name", "score", "strand", "thickStart", "thickEnd", "itemRgb", "blockCount", "blockSizes", "blockStarts "]
-with open(my_output_file_mulitple_exons, 'w') as tsv:
+with open(output_file_mulitple_exons, 'w') as tsv:
     writer = csv.writer(tsv,  delimiter="\t")
-    print "writing to ", my_output_file_mulitple_exons, "..."
+    print "writing to ", output_file_mulitple_exons, "..."
     writer.writerow(output_header_multi)
     writer.writerows(all_lines)
 

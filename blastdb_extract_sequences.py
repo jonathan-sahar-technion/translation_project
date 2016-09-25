@@ -2,27 +2,32 @@
 
 import csv
 from subprocess import check_output
-from feature_extraction import get_RBP_motifs_all_genes
-# import feature_extraction
+# from feature_exraction import get_RBP_motifs_all_genes
+
 # exon-starts are 0-based, exon-ends are 1-based
-my_input_file = sys.argv[1]
-output_folder = sys.argv[2]
+# my_input_file = sys.argv[1]
+# my_output_file = sys.argv[2]
 
 
 
 # configure paths
-#data_folder = "/home/jonathan/Documents/data/"
-data_folder = "/srv01/technion/jonathans/data/"
-# my_input_file = data_folder + "annotations/mm9_prev_version/mm9_ensGene_eric.gpe"
-LIMIT_INPUT_LINES = 0  
+server = False
+data_folder = "/home/jonathan/Documents/data/"
+if server:
+    data_folder = "/srv01/technion/jonathans/data/"
+output_folder = data_folder + "output/"
+input_folder = data_folder + "input/"
 
-tsv_output_file = data_folder +  "extracted_sequences/extracted_utrs_blastdb.tsv"
-fasta_output_file = data_folder + "extracted_sequences/extracted_utrs_blastdb.fa"
+input_file = input_folder + "mm9_ensGene_eric.gpe"
+
+tsv_output_file = output_folder +  "extracted_utrs_blastdb.tsv"
+fasta_output_file = output_folder + "extracted_utrs_blastdb.fa"
 
 blastdb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
-blastdb_entries_file = data_folder + "blastdb_entries.txt"
-rbpmap_entries_file = data_folder + "RBPmap_entries.txt"
+blastdb_entries_file = input_folder + "blastdb_entries.txt"
+rbpmap_entries_file = input_folder + "RBPmap_entries.txt"
 
+LIMIT_INPUT_LINES = 10
 
 
 # line structure
@@ -90,8 +95,8 @@ def proccess_line(line, mode): # 'mode' is one of "blastcmd", "rbpmap"
     tx_start = line[TX_START_FIELD]
     tx_end = line[TX_END_FIELD]
 
-    # A note on 0/1 based representation: the basic data file we're processing here is a bigGenePred, which is almost
-    # the internal representation of the UCSC genome browser. Start coordinates are 0 based and end coordinates are
+    # A note on 0/1 based representation: the basic data file we're processing here is called bigGenePred, which is almost
+    # the internal representation of the UCSC genome browser. It uses start coordinates that are 0 based and end coordinates that are
     # 1 based. We need coordinates for blastdbcmd, which requires consistent 1 based representation.
 
     # break the list fields into lists
@@ -115,7 +120,7 @@ def proccess_line(line, mode): # 'mode' is one of "blastcmd", "rbpmap"
                          for i, exon_start in enumerate(exon_starts)
                          if int(exon_start) < cds_start]
         blastcmd_entries = ["{chr} {start}-{end} plus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
-        rbpmap_entries = ["{chr}:{start}-{end}:+".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
+        rbpmap_entries = ["{chr}:{start}-{end}:plus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
 
     elif strand == '-':
 
@@ -135,11 +140,11 @@ def proccess_line(line, mode): # 'mode' is one of "blastcmd", "rbpmap"
         blastcmd_entries = ["{chr} {start}-{end} minus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
         blastcmd_entries.reverse() # since this will give the reverse compliment, in order to get a correct concatenation we want to reverse the order of the exons.
 
-        rbpmap_entries = ["{chr}:{start}-{end}:-".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
+        rbpmap_entries = ["{chr}:{start}-{end}:minus".format(chr=chrom, start=start, end=end) for start, end in exons_to_keep]
 
     if mode == 'blastcmd' and len(blastcmd_entries) > 1:
         print "mode detected: blastcmd"
-	first_kept_start = exons_to_keep[0][0]
+	    first_kept_start = exons_to_keep[0][0]
         first_kept_end = exons_to_keep[0][1]
         first_kept_size = first_kept_end - first_kept_start
         res = run_blastdbcmd(blastcmd_entries)
@@ -156,11 +161,11 @@ def proccess_line(line, mode): # 'mode' is one of "blastcmd", "rbpmap"
 
 if __name__ == '__main__':
 
-    print "Proccessing", my_input_file, "..."
+    print "Proccessing", input_file, "..."
     output_lines = []
     rbpmap_entries = []
     count = 0
-    with open(my_input_file, 'r') as tsv:
+    with open(input_file, 'r') as tsv:
         reader = csv.reader(tsv,  delimiter="\t")
         reader.next()
         for line in reader:
@@ -171,15 +176,16 @@ if __name__ == '__main__':
             if line[CDS_START_FIELD] == line[CDS_END_FIELD]:
                 continue #skeep non-coding RNAs
 
-	    if do_extract_fasta:
-		    proccessed_line = proccess_line(line, 'blastcmd')
-		    if len(proccessed_line) > 0:
-			output_lines.append(proccessed_line)
+            if do_extract_fasta:
+                proccessed_line = proccess_line(line, 'blastcmd')
+                print proccessed_line
+                if len(proccessed_line) > 0:
+                output_lines.append(proccessed_line)
 
-	    if do_rbpmap:
-		    proccessed_line = proccess_line(line, 'rbpmap')
-		    if len(proccessed_line) > 0:
-			rbpmap_entries +=proccessed_line
+            if do_rbpmap:
+                proccessed_line = proccess_line(line, 'rbpmap')
+                if len(proccessed_line) > 0:
+                    rbpmap_entries +=proccessed_line
 
     output_header = ["name", "chr", "first_exon_start", "first_exon_size", "strand", "5'_UTR"]
 
@@ -194,7 +200,7 @@ if __name__ == '__main__':
             for line in output_lines:
                 fasta_file.write(">" + line[0]+"\n")
                 fasta_file.write(line[5]+"\n\n")
-            print("written tab fasta file to {}".format(fasta_output_file))
+            print("written fasta file to {}".format(fasta_output_file))
 
     if do_rbpmap:
 	    with open(rbpmap_entries_file, 'w') as rbpmap_file:
@@ -203,5 +209,5 @@ if __name__ == '__main__':
 		print("written rbpmap file to {}".format(rbpmap_entries_file))
 
 
-    get_RBP_motifs_all_genes(rbpmap_entries_file)
+    # get_RBP_motifs_all_genes(rbpmap_file)
 
