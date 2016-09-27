@@ -18,10 +18,16 @@ NUCLEOTIDES = "ACUG"
 all_RBPs = {}
 
 #Paths
-# workspace = "/home/jonathan/Documents/data"
-workspace = "/srv01/technion/jonathans/data"
-rbp_motifs_per_gene_path = workspace + "/rbp_motif_analysis/motifs_by_gene_name.tsv"
-genes_per_protein_path = workspace + "/rbp_motif_analysis/genes_by_protein_name.tsv"
+
+server = False
+workspace = "/home/jonathan/Documents/data/"
+
+if server:
+    workspace = "/srv01/technion/jonathans/data/"
+
+rbp_data_folder = workspace + "rbp_motif_analysis/"
+rbp_motifs_per_gene_path = rbp_data_folder + "motifs_by_gene_name.tsv"
+genes_per_protein_path = rbp_data_folder + "genes_by_protein_name.tsv"
 
  # Utility functions
 def is_number(string):
@@ -56,9 +62,10 @@ def get_RBP_motifs_from_gene(gene_name, input_lines):
     occurances = "b - occurances"
     positions = "c - positions"
     k_mers = "d - k_mers"
-    p_values = "e - p_values"
-    average_pvalue = "f - average_pvalue"
-    all_fields = ["motif", "occurances", "positions", "k_mers", "p_values", "average_pvalue"]
+    average_pvalue = "e - average_pvalue"
+    p_values = "f - p_values"
+    # all_fields = ["motif", "occurances", "positions", "k_mers", "p_values", "average_pvalue"]
+    all_fields = ["motif", "p_values", "average_pvalue"]
 
     protein = ""
     dMotif_counts = {}
@@ -85,24 +92,24 @@ def get_RBP_motifs_from_gene(gene_name, input_lines):
                 # For all including the first protein in the file
                 protein = line[1]
                 dMotif_counts[protein] = {  motif: "",
-                                            occurances: 0,
-                                            positions: [],
-                                            k_mers: [],
+                                            # occurances: 0,
+                                            # positions: [],
+                                            # k_mers: [],
                                             p_values: [] }
 
             continue # Not a data line, nothing more to do here
 
         # A data line, populate the dict with the data
         dMotif_counts[protein][motif] = line[MOTIF]
-        dMotif_counts[protein][occurances] += 1
-        dMotif_counts[protein][positions].append(line[POSITION])
-        dMotif_counts[protein][k_mers].append(line[KMER])
+        # dMotif_counts[protein][occurances] += 1
+        # dMotif_counts[protein][positions].append(line[POSITION])
+        # dMotif_counts[protein][k_mers].append(line[KMER])
         dMotif_counts[protein][p_values].append(line[PVALUE])
 
     # Stringify the lists of values
     for protein in dMotif_counts.keys():
-        dMotif_counts[protein][positions] = ",".join(dMotif_counts[protein][positions])
-        dMotif_counts[protein][k_mers] = ",".join(dMotif_counts[protein][k_mers])
+        # dMotif_counts[protein][positions] = ",".join(dMotif_counts[protein][positions])
+        # dMotif_counts[protein][k_mers] = ",".join(dMotif_counts[protein][k_mers])
         dMotif_counts[protein][p_values] = ",".join(dMotif_counts[protein][p_values])
 
     # This is a list of lists (will hold all the lines in the file):
@@ -114,14 +121,15 @@ def get_RBP_motifs_from_gene(gene_name, input_lines):
 
     lines = [
             [gene_name, prot] +
-            [value for key, value in sort_by_first_in_tuple(dFields.items())] for prot, dFields in sorted_proteins_and_counts
+            [value for key, value in sort_by_first_in_tuple(dFields.items())[:-1]] for prot, dFields in sorted_proteins_and_counts
             ]
 
-    header = ["gene_name", "protein_name", "protein_motif", "num_occurences", "AUG_postions", "k-mers", "p-values", "average_pvalue" ]
+    # header = ["gene_name", "protein_name", "protein_motif", "num_occurences", "AUG_postions", "k-mers", "p-values", "average_pvalue" ]
+    header = ["gene_name", "protein_name", "protein_motif","average_pvalue" ]
 
     return header, lines
 
-def get_RBP_motifs_all_genes(rbp_output_file = workspace + "/rbp_motifs/prediction_example_multiple_genes.txt"):
+def get_RBP_motifs_all_genes(rbp_output_file = rbp_data_folder + "All_Predictions.txt"):
     collect_lines = False
     lines = []
     extrated_features = []

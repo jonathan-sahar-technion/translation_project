@@ -12,23 +12,25 @@ from subprocess import check_output
 
 # configure paths
 server = False
+
 data_folder = "/home/jonathan/Documents/data/"
+blastdb_path = data_folder + "blastdb/mm9"
+
 if server:
     data_folder = "/srv01/technion/jonathans/data/"
-output_folder = data_folder + "output/"
+    blastdb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
+
 input_folder = data_folder + "input/"
+input_annotations_file = input_folder + "mm9_ensGene_eric.gpe"
 
-input_file = input_folder + "mm9_ensGene_eric.gpe"
-
+output_folder = data_folder + "output/"
 tsv_output_file = output_folder +  "extracted_utrs_blastdb.tsv"
 fasta_output_file = output_folder + "extracted_utrs_blastdb.fa"
 
-blastdb_path = "/storage/md_reut/footprint/mm9/blastdb/mm9"
 blastdb_entries_file = input_folder + "blastdb_entries.txt"
 rbpmap_entries_file = input_folder + "RBPmap_entries.txt"
 
-LIMIT_INPUT_LINES = 10
-
+LIMIT_INPUT_LINES = 100
 
 # line structure
 NAME_FIELD = 1
@@ -48,8 +50,8 @@ START = 0
 END = 1000000000
 
 # run blastdbcmd? RBPmap?
-do_extract_fasta = False
-do_rbpmap = True
+bExtract_fasta = False
+bCreate_RBPmap_entries = True
 
 def run_blastdbcmd(entries):
     # write entries to temporary file
@@ -144,7 +146,7 @@ def proccess_line(line, mode): # 'mode' is one of "blastcmd", "rbpmap"
 
     if mode == 'blastcmd' and len(blastcmd_entries) > 1:
         print "mode detected: blastcmd"
-	    first_kept_start = exons_to_keep[0][0]
+        first_kept_start = exons_to_keep[0][0]
         first_kept_end = exons_to_keep[0][1]
         first_kept_size = first_kept_end - first_kept_start
         res = run_blastdbcmd(blastcmd_entries)
@@ -155,17 +157,18 @@ def proccess_line(line, mode): # 'mode' is one of "blastcmd", "rbpmap"
         print "mode detected: rbpmap"
         # print rbpmap_entries
         # print "\n"
-        return rbpmap_entries
+        return [name + "_" + name2] + [e for e in rbpmap_entries]
+        # return rbpmap_entries
 
     return []
 
 if __name__ == '__main__':
 
-    print "Proccessing", input_file, "..."
+    print "Proccessing", input_annotations_file, "..."
     output_lines = []
     rbpmap_entries = []
     count = 0
-    with open(input_file, 'r') as tsv:
+    with open(input_annotations_file, 'r') as tsv:
         reader = csv.reader(tsv,  delimiter="\t")
         reader.next()
         for line in reader:
@@ -176,23 +179,25 @@ if __name__ == '__main__':
             if line[CDS_START_FIELD] == line[CDS_END_FIELD]:
                 continue #skeep non-coding RNAs
 
-            if do_extract_fasta:
+            if bExtract_fasta:
                 proccessed_line = proccess_line(line, 'blastcmd')
-                print proccessed_line
                 if len(proccessed_line) > 0:
-                output_lines.append(proccessed_line)
+                    print proccessed_line
+                    output_lines.append(proccessed_line)
 
-            if do_rbpmap:
+            if bCreate_RBPmap_entries:
                 proccessed_line = proccess_line(line, 'rbpmap')
                 if len(proccessed_line) > 0:
-                    rbpmap_entries +=proccessed_line
+                    print proccessed_line
+                    rbpmap_entries.append(proccessed_line)
 
-    output_header = ["name", "chr", "first_exon_start", "first_exon_size", "strand", "5'_UTR"]
+    output_header_fasta = ["name", "chr", "first_exon_start", "first_exon_size", "strand", "5'_UTR"]
+    output_header_rbp = ["name", "chr", "input sequences to RBP"]
 
-    if do_extract_fasta:
+    if bExtract_fasta:
         with open(tsv_output_file, 'w') as tsv:
             writer = csv.writer(tsv,  delimiter="\t")
-            writer.writerow(output_header)
+            writer.writerow(output_header_fasta)
             writer.writerows(output_lines)
         print("written tab delimeted file to {}".format(tsv_output_file))
 
@@ -202,12 +207,13 @@ if __name__ == '__main__':
                 fasta_file.write(line[5]+"\n\n")
             print("written fasta file to {}".format(fasta_output_file))
 
-    if do_rbpmap:
-	    with open(rbpmap_entries_file, 'w') as rbpmap_file:
-		writer = csv.writer(rbpmap_file,  delimiter="\t")
-		writer.writerows([[line] for line in rbpmap_entries])
-		print("written rbpmap file to {}".format(rbpmap_entries_file))
+    if bCreate_RBPmap_entries:
+        with open(rbpmap_entries_file, 'w') as rbpmap_file:
+            writer = csv.writer(rbpmap_file,  delimiter="\t")
+            writer.writerow(output_header_rbp)
+            writer.writerows([[line] for line in rbpmap_entries])
+            print("written rbpmap file to {}".format(rbpmap_entries_file))
 
 
-    # get_RBP_motifs_all_genes(rbpmap_file)
+            # get_RBP_motifs_all_genes(rbpmap_file)
 
