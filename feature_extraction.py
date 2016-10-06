@@ -5,6 +5,18 @@ import re
 import numpy as np
 import csv
 import decimal
+from blastdb_extract_sequences import fasta_output_file
+
+# example to show how to write named matrices to file with pandas
+# ----
+# import numpy as np
+# import pandas as pd
+#
+# A = np.random.randint(0, 10, size=36).reshape(6, 6)
+# names = [_ for _ in 'abcdef']
+# df = pd.DataFrame(A, index=names, columns=names)
+# df.to_csv('df.csv', index=True, header=True, sep=' ')
+
 
 # Constants
 POSITION = 0
@@ -177,7 +189,34 @@ def get_RBP_motifs_all_genes(rbp_output_file = rbp_data_folder + "All_Prediction
 
         print  all_proteins
 
+def update_kmer_dict(kmers_genes_dict, all_kmers_set, gene_name, sequence):
+    K = 6
+    kmers = [sequence[start:start+K] for start in range(len(sequence))]
+    kmers_genes_dict[gene_name] = kmers
+    [all_kmers_set.add(kmer) for kmer in kmers]
+
+def get_kmers_all_genes(all_genes_fasta = fasta_output_file):
+    collect_lines = []
+    dKmers_per_gene = {}
+    sAll_kmers = set()
+    with open(all_genes_fasta) as file:
+        for line in file:
+            line = line.split()
+            if len(line) < 1 :
+                continue #skip empty lines
+
+            # this line is a gene name
+            if re.match(r'>ENSMUST.*', line[0]):
+                gene_name = re.match(r'>(ENSMUST.*)', line[0]).group(1)
+                continue
+
+            else: # this is a sequence line
+                update_kmer_dict(dKmers_per_gene, sAll_kmers, gene_name, line[0])
+    for k, v in dKmers_per_gene.iteritems():
+        print k, v
+    print sAll_kmers
 
 if __name__ == '__main__':
 
-    get_RBP_motifs_all_genes()
+    # get_RBP_motifs_all_genes()
+    get_kmers_all_genes()
