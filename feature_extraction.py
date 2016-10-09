@@ -6,7 +6,7 @@ import numpy as np
 import csv
 import decimal
 from blastdb_extract_sequences import fasta_output_file
-
+import pandas as pd
 # example to show how to write named matrices to file with pandas
 # ----
 # import numpy as np
@@ -40,6 +40,8 @@ if server:
 rbp_data_folder = workspace + "rbp_motif_analysis/"
 rbp_motifs_per_gene_path = rbp_data_folder + "motifs_by_gene_name.tsv"
 genes_per_protein_path = rbp_data_folder + "genes_by_protein_name.tsv"
+genes_RBPs_matrix = rbp_data_folder + "genes_RBPs_matrix.tsv"
+genes_kmers_matrix = rbp_data_folder + "genes_kmers_matrix.tsv"
 
  # Utility functions
 def is_number(string):
@@ -86,14 +88,13 @@ def get_RBP_motifs_from_gene(gene_name, input_lines):
         if len(line) < 1: continue
         elif not is_number(line[0]):
             if line[0] == "Protein:":
-
                 # Not the first protein in the file
                 if protein:
                     # Add current gene to the list of genes that have a binding site for this RBP in their UTR
                     try:
                         all_RBPs[protein].append(gene_name)
                     except KeyError: # first gene for this RBP, create the list.
-                         all_RBPs[protein] = [gene_name]
+                        all_RBPs[protein] = [gene_name]
 
                     # calculate stats for previous protein
                     decimal.getcontext().prec = 2
@@ -138,7 +139,6 @@ def get_RBP_motifs_from_gene(gene_name, input_lines):
 
     # header = ["gene_name", "protein_name", "protein_motif", "num_occurences", "AUG_postions", "k-mers", "p-values", "average_pvalue" ]
     header = ["gene_name", "protein_name", "protein_motif","average_pvalue" ]
-
     return header, lines
 
 def get_RBP_motifs_all_genes(rbp_output_file = rbp_data_folder + "All_Predictions.txt"):
@@ -187,18 +187,21 @@ def get_RBP_motifs_all_genes(rbp_output_file = rbp_data_folder + "All_Prediction
         all_proteins = [[protein] + genes for protein, genes in sort_by_first_in_tuple(all_RBPs.items())]
         writer.writerows(all_proteins)
 
-        print  all_proteins
+        # print  all_proteins
 
-def update_kmer_dict(kmers_genes_dict, all_kmers_set, gene_name, sequence):
-    K = 6
-    kmers = [sequence[start:start+K] for start in range(len(sequence))]
-    kmers_genes_dict[gene_name] = kmers
-    [all_kmers_set.add(kmer) for kmer in kmers]
+    for k,v in all_RBPs.items():
+        all_RBPs[k] = pd.Series([1] * len(v), index = v)
+        # print k, all_RBPs[k]
+
+    df_RBPs = pd.DataFrame.from_dict(all_RBPs, 'index', dtype=int)
+    df_RBPs.fillna(0, inplace=True)
+    df_RBPs.to_csv(genes_RBPs_matrix, sep = '\t')
+    # print df_RBPs
 
 def get_kmers_all_genes(all_genes_fasta = fasta_output_file):
-    collect_lines = []
+    K = 6
+    gene_name = "ERROR! Sequence appears before first gene name!"
     dKmers_per_gene = {}
-    sAll_kmers = set()
     with open(all_genes_fasta) as file:
         for line in file:
             line = line.split()
@@ -211,12 +214,16 @@ def get_kmers_all_genes(all_genes_fasta = fasta_output_file):
                 continue
 
             else: # this is a sequence line
-                update_kmer_dict(dKmers_per_gene, sAll_kmers, gene_name, line[0])
-    for k, v in dKmers_per_gene.iteritems():
-        print k, v
-    print sAll_kmers
+                sequence = line[0]
+                kmers = [sequence[start:start+K] for start in range(len(sequence) - K)]
+                dKmers_per_gene[gene_name] = pd.Series(len(kmers)*[1], index = kmers)
+    df_kmers = pd.DataFrame.from_dict(dKmers_per_gene, 'index', "int")
+    df_kmers.fillna(0, inplace=True)
+    df_kmers.to_csv(genes_kmers_matrix, sep = '\t')
+
+    # print df
 
 if __name__ == '__main__':
 
-    # get_RBP_motifs_all_genes()
+    get_RBP_motifs_all_genes()
     get_kmers_all_genes()
